@@ -149,6 +149,30 @@ const DIR_LABELS = [
 
 
 
+// Exact wrap rules keyed by "q,r,roll" → [destQ, destR]
+// Hex numbering (sorted by r then q):
+// #2=(1,-3) #3=(2,-3) #4=(3,-3) #5=(-1,-2) #9=(3,-2)
+// #10=(-2,-1) #15=(3,-1) #16=(-3,0) #22=(3,0)
+// #23=(-3,1) #28=(2,1) #29=(-3,2) #33=(1,2) #34=(-3,3) #35=(-2,3) #36=(-1,3)
+const WRAP_RULES = {
+  "-1,-2,1":  [ 3, -2],  // cell 5  roll 1 → cell 9
+  "1,-3,3":   [-3,  1],  // cell 2  roll 3 → cell 23
+  "3,-2,4":   [-1, -2],  // cell 9  roll 4 → cell 5
+  "-3,1,6":   [ 1, -3],  // cell 23 roll 6 → cell 2
+  "-3,2,1":   [ 1,  2],  // cell 29 roll 1 → cell 33
+  "3,-1,3":   [-1,  3],  // cell 15 roll 3 → cell 36
+  "1,2,4":    [-3,  2],  // cell 33 roll 4 → cell 29
+  "-1,3,6":   [ 3, -1],  // cell 36 roll 6 → cell 15
+  "-2,-1,2":  [-2,  3],  // cell 10 roll 2 → cell 35
+  "-2,3,5":   [-2, -1],  // cell 35 roll 5 → cell 10
+  "2,-3,2":   [ 2,  1],  // cell 3  roll 2 → cell 28
+  "2,1,5":    [ 2, -3],  // cell 28 roll 5 → cell 3
+  "-3,0,1":   [ 3,  0],  // cell 16 roll 1 → cell 22
+  "3,0,4":    [-3,  0],  // cell 22 roll 4 → cell 16
+  "-3,3,6":   [ 3, -3],  // cell 34 roll 6 → cell 4
+  "3,-3,3":   [-3,  3],  // cell 4  roll 3 → cell 34
+};
+
 function inMap(q, r) {
   return Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) <= 3;
 }
@@ -359,8 +383,15 @@ export default function VaarnWeather() {
             newQ = cq; newR = cr;
             noteText = `→ Rolled ${roll}`;
           } else {
-            noteText = `⊗ Rolled ${roll} — edge, marker stays put`;
-            noteType = "blocked";
+            const wrapDest = WRAP_RULES[`${q},${r},${roll}`];
+            if (wrapDest) {
+              [newQ, newR] = wrapDest;
+              noteText = `↺ Rolled ${roll} — wraps to opposite edge`;
+              noteType = "wrap";
+            } else {
+              noteText = `⊗ Rolled ${roll} — edge, marker stays put`;
+              noteType = "blocked";
+            }
           }
         }
 
@@ -415,12 +446,18 @@ export default function VaarnWeather() {
 
       {/* Header */}
       <div style={{ textAlign:"center", marginBottom:"16px", position:"relative", zIndex:1 }}>
-        <div style={{ fontSize:"14px", letterSpacing:"7px", color:"#304880", marginBottom:"5px" }}>
+        <a href="https://vaultsofvaarn.com/" target="_blank" rel="noreferrer"
+          style={{ fontSize:"14px", letterSpacing:"7px", color:"#304880", marginBottom:"5px", textDecoration:"none", display:"block", transition:"color 0.2s" }}
+          onMouseEnter={e => e.currentTarget.style.color="#5070b0"}
+          onMouseLeave={e => e.currentTarget.style.color="#304880"}>
           VAULTS OF VAARN
-        </div>
-        <h1 style={{ fontSize:"28px", fontWeight:"normal", letterSpacing:"2px", margin:0, color:"#90b0e0", textShadow:"0 0 30px rgba(70,110,200,0.5)" }}>
-          Desert Weather Oracle
-        </h1>
+        </a>
+        <a href="https://mkn-publications.itch.io/" target="_blank" rel="noreferrer"
+          style={{ fontSize:"28px", fontWeight:"normal", letterSpacing:"2px", margin:"0 0 0 0", color:"#90b0e0", textShadow:"0 0 30px rgba(70,110,200,0.5)", textDecoration:"none", display:"block", transition:"color 0.2s" }}
+          onMouseEnter={e => e.currentTarget.style.color="#c0d8ff"}
+          onMouseLeave={e => e.currentTarget.style.color="#90b0e0"}>
+          MKN Desert Weather Oracle 2.7
+        </a>
         <div style={{ color:"#2a4070", fontSize:"15px", marginTop:"5px", letterSpacing:"1px" }}>Day {day}</div>
       </div>
 
@@ -460,11 +497,6 @@ export default function VaarnWeather() {
 
                   {/* Hex number — top area */}
 
-                  {isActive && (
-                    <text x={px} y={py - 16} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.9)"
-                      fontFamily="Georgia,serif" style={{ pointerEvents:"none", userSelect:"none" }}>
-                    </text>
-                  )}
 
                   {/* START label */}
                   {isStart && !isActive && (
@@ -568,7 +600,7 @@ export default function VaarnWeather() {
 
             {note && (
               <div style={{ fontSize:"12.5px", marginBottom:"10px", letterSpacing:"0.3px", lineHeight:1.5,
-                color: note.type==="blocked" ? "#c08840" : "#70b8f8",
+                color: note.type==="blocked" ? "#c08840" : note.type==="wrap" ? "#8060d8" : "#70b8f8",
                 transition:"color 0.4s", minHeight:"34px" }}>
                 {note.text}
               </div>
@@ -602,7 +634,8 @@ export default function VaarnWeather() {
           <div style={{ background:"rgba(4,8,28,0.7)", border:"1px solid #0c1240", borderRadius:"10px",
             padding:"12px 14px", fontSize:"12.5px", color:"#283050", lineHeight:"1.85", alignSelf:"start" }}>
             <div style={{ color:"#1a2848", letterSpacing:"3px", fontSize:"13px", marginBottom:"6px" }}>RULES REFERENCE</div>
-            <div>⊗ Off-edge: marker stays put</div>
+            <div>↺ Specific rolls wrap to opposite edge</div>
+            <div>⊗ Other off-edge rolls: marker stays put</div>
             <div>◉ White disc = current hex</div>
           </div>
 
@@ -622,7 +655,7 @@ export default function VaarnWeather() {
                       {h.roll}
                     </div>
                     <div style={{ fontSize:"14px", color:"#2e3e60" }}>
-                      {h.noteType==="blocked" ? "⊗" : "→"}
+                      {h.noteType==="blocked" ? "⊗" : h.noteType==="wrap" ? "↺" : "→"}
                     </div>
                     <div style={{ fontSize:"15px", color: ACCENT[h.weather] || "#6878b0" }}>
                       {w?.name}
@@ -636,7 +669,19 @@ export default function VaarnWeather() {
       </div>
 
       <div style={{ marginTop:"22px", fontSize:"15px", letterSpacing:"4px", color:"#0e1628", textAlign:"center", position:"relative", zIndex:1 }}>
-        VAULTS OF VAARN · WEATHER SYSTEM 2.6
+        <a href="https://vaultsofvaarn.com/" target="_blank" rel="noreferrer"
+          style={{ color:"#0e1628", textDecoration:"none", transition:"color 0.2s" }}
+          onMouseEnter={e => e.currentTarget.style.color="#304880"}
+          onMouseLeave={e => e.currentTarget.style.color="#0e1628"}>
+          VAULTS OF VAARN
+        </a>
+        {" · "}
+        <a href="https://mkn-publications.itch.io/" target="_blank" rel="noreferrer"
+          style={{ color:"#0e1628", textDecoration:"none", transition:"color 0.2s" }}
+          onMouseEnter={e => e.currentTarget.style.color="#304880"}
+          onMouseLeave={e => e.currentTarget.style.color="#0e1628"}>
+          MKN DESERT WEATHER ORACLE 2.7
+        </a>
       </div>
     </div>
   );
