@@ -413,6 +413,18 @@ export default function VaarnWeather() {
     setNote(null); setHistory([]); setDay(1); setPulse(false);
   };
 
+  const clickHex = useCallback((q, r) => {
+    if (rolling) return;
+    setPos([q, r]);
+    setNote({ text: `✦ Manually placed on hex`, type: "manual" });
+    setDay(d => d + 1);
+    setHistory(h => [
+      { roll: "—", weather: HEX_GRID[`${q},${r}`], noteType: "manual" },
+      ...h,
+    ].slice(0, 9));
+    setPulse(true);
+  }, [rolling]);
+
   // SVG canvas
   const SVG_W = 530, SVG_H = 500;
   const cx0 = SVG_W / 2 - 14, cy0 = SVG_H / 2 + 8;
@@ -479,7 +491,7 @@ export default function VaarnWeather() {
               const isStart  = q === 0 && r === 0;
 
               return (
-                <g key={key}>
+                <g key={key} onClick={() => clickHex(q, r)} style={{ cursor: "pointer" }}>
                   <polygon points={hexPolygon(px + 1.5, py + 2.5)} fill="rgba(0,0,16,0.45)" />
                   <polygon points={hexPolygon(px, py)} fill={`url(#p${wKey})`}
                     stroke={isActive ? "#ffffff" : "#0e1848"}
@@ -600,7 +612,7 @@ export default function VaarnWeather() {
 
             {note && (
               <div style={{ fontSize:"12.5px", marginBottom:"10px", letterSpacing:"0.3px", lineHeight:1.5,
-                color: note.type==="blocked" ? "#c08840" : note.type==="wrap" ? "#8060d8" : "#70b8f8",
+                color: note.type==="blocked" ? "#c08840" : note.type==="wrap" ? "#8060d8" : note.type==="manual" ? "#a0c060" : "#70b8f8",
                 transition:"color 0.4s", minHeight:"34px" }}>
                 {note.text}
               </div>
@@ -634,6 +646,7 @@ export default function VaarnWeather() {
           <div style={{ background:"rgba(4,8,28,0.7)", border:"1px solid #0c1240", borderRadius:"10px",
             padding:"12px 14px", fontSize:"12.5px", color:"#283050", lineHeight:"1.85", alignSelf:"start" }}>
             <div style={{ color:"#1a2848", letterSpacing:"3px", fontSize:"13px", marginBottom:"6px" }}>RULES REFERENCE</div>
+            <div>✦ Click any hex to place manually</div>
             <div>↺ Specific rolls wrap to opposite edge</div>
             <div>⊗ Other off-edge rolls: marker stays put</div>
             <div>◉ White disc = current hex</div>
@@ -655,7 +668,7 @@ export default function VaarnWeather() {
                       {h.roll}
                     </div>
                     <div style={{ fontSize:"14px", color:"#2e3e60" }}>
-                      {h.noteType==="blocked" ? "⊗" : h.noteType==="wrap" ? "↺" : "→"}
+                      {h.noteType==="blocked" ? "⊗" : h.noteType==="wrap" ? "↺" : h.noteType==="manual" ? "✦" : "→"}
                     </div>
                     <div style={{ fontSize:"15px", color: ACCENT[h.weather] || "#6878b0" }}>
                       {w?.name}
