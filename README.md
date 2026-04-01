@@ -1,3 +1,3 @@
 # MKN Vaarn Weather Oracle
-
-https://mkn-publications.itch.io/
+https://vaarn-weather.vercel.app/
+https://mknaomi-publications.itch.io/vaarn-weather
